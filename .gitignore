@@ -1,0 +1,8 @@
+.venv/
+.ipynb_checkpoints/
+__pycache__/
+*.pyc
+jupyter_tokens.txt
+
+Reports/*.pdf
+Reports/*.pptx
