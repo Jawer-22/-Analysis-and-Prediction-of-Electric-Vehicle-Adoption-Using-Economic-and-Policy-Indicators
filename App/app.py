@@ -18,23 +18,42 @@ COUNTRY_MAP = {
     "🇨🇭 Switzerland": "Switzerland", "🇬🇧 United Kingdom": "United Kingdom", "🇫🇷 France": "France",
     "🇩🇪 Germany": "Germany", "🇪🇸 Spain": "Spain", "🇵🇱 Poland": "Poland", "🇨🇦 Canada": "Canada",
     "🇺🇸 United States": "United States", "🇲🇽 Mexico": "Mexico", "🇰🇷 South Korea": "South Korea",
-    "🇹🇭 Thailand": "Thailand", "🇮🇳 India": "India", "🇦🇺 Australia": "Australia"
+    "🇹🇭 Thailand": "Thailand", "🇮🇳 India": "India", "🇦🇺 Australia": "Australia", "🇨🇳 China": "China",
+    "🇧🇪 Belgium": "Belgium", "🇧🇷 Brazil": "Brazil", "🇮🇩 Indonesia": "Indonesia", "🇮🇹 Italy": "Italy",
+    "🇯🇵 Japan": "Japan", "🇵🇹 Portugal": "Portugal", "🇹🇷 Turkey": "Turkey"
+}
+
+REGION_COUNTRY_MAP = {
+    "Europe": ["🇳🇴 Norway", "🇸🇪 Sweden", "🇳🇱 Netherlands", "🇦🇹 Austria", "🇨🇭 Switzerland", "🇬🇧 United Kingdom", "🇫🇷 France", "🇩🇪 Germany", "🇪🇸 Spain", "🇵🇱 Poland", "🇧🇪 Belgium", "🇮🇹 Italy", "🇵🇹 Portugal", "🇹🇷 Turkey"],
+    "North America": ["🇨🇦 Canada", "🇺🇸 United States", "🇲🇽 Mexico"],
+    "APAC": ["🇰🇷 South Korea", "🇹🇭 Thailand", "🇮🇳 India", "🇨🇳 China", "🇮🇩 Indonesia", "🇯🇵 Japan"],
+    "Oceania": ["🇦🇺 Australia"],
+    "South America": ["🇧🇷 Brazil"],
+    "Africa": []
 }
 
 # --- SIDEBAR CONFIGURATION ---
 st.sidebar.title("🌍 Prediction Engine")
 st.sidebar.markdown("Configure the regional ecosystem variables below.")
 
-country_display = st.sidebar.selectbox("Target Market Selection", list(COUNTRY_MAP.keys()), index=0)
-country = COUNTRY_MAP[country_display]
-region = st.sidebar.selectbox("Continental Region", ["Europe", "North America", "APAC", "Oceania", "South America", "Africa"], index=0)
+region = st.sidebar.selectbox("Continental Region", [r for r, c in REGION_COUNTRY_MAP.items() if c], index=0)
+
+available_countries = REGION_COUNTRY_MAP.get(region, [])
+if available_countries:
+    country_display = st.sidebar.selectbox("Target Market Selection", available_countries, index=0, key=f"target_market_{region}")
+    country = COUNTRY_MAP[country_display]
+else:
+    country_display = st.sidebar.selectbox("Target Market Selection", ["None Available"], index=0, key=f"target_market_{region}_none")
+    country = "None"
+
 vehicle_segment = st.sidebar.selectbox("Vehicle Segment Strategy", ["mass_market", "premium", "commercial"], index=0)
 
 st.sidebar.markdown("### Economics & Cost Dynamics")
 economic_index = st.sidebar.number_input("Economic Index (GDP * Urban%)", value=5000.0)
 fuel_price = st.sidebar.number_input("Internal Combustion Fuel Price (USD/ltr)", value=1.5)
 electricity_price = st.sidebar.number_input("Electricity Cost (USD/kWh)", value=0.15)
-fuel_to_electric_ratio = st.sidebar.number_input("Fuel-to-Electric Price Ratio", value=10.0)
+fuel_to_electric_ratio = fuel_price / electricity_price if electricity_price > 0 else 0.0
+st.sidebar.markdown(f"**Fuel-to-Electric Price Ratio (Calculated):** `{fuel_to_electric_ratio:.2f}`")
 
 st.sidebar.markdown("### Structural Infrastructure & Policy")
 policy_index = st.sidebar.slider("Current Policy Index (Subsidies/Regulations)", 0, 8000, 2000)
@@ -115,4 +134,4 @@ if predict_clicked:
             if prediction > 15: st.balloons()
             
         except Exception as e:
-            st.error(f"Computation Pipeline Crash: {e}\\n\\nPlease verify variable parity matches expected XGBoost parameter thresholds.")
+            st.error(f"Computation Pipeline Crash: {e}\n\nPlease verify variable parity matches expected XGBoost parameter thresholds.")
