@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import plotly.graph_objects as go
 import pickle
 import sys
 import os
@@ -9,57 +10,69 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.helper_functions import load_model, prepare_input_data
 
-st.set_page_config(page_title="EV Market Predictor", layout="wide", page_icon="⚡")
+st.set_page_config(page_title="EV Market Premium Dashboard", layout="wide", page_icon="⚡")
 
-st.title("Electric Vehicle Market Share Predictor ⚡🚗")
-st.markdown("Enter the economic, infrastructural, and policy data for a region below to predict the resultant **EV Market Share** using our advanced XGBoost machine learning model.")
-st.markdown("---")
+# Mapped selection dictionary
+COUNTRY_MAP = {
+    "🇳🇴 Norway": "Norway", "🇸🇪 Sweden": "Sweden", "🇳🇱 Netherlands": "Netherlands", "🇦🇹 Austria": "Austria",
+    "🇨🇭 Switzerland": "Switzerland", "🇬🇧 United Kingdom": "United Kingdom", "🇫🇷 France": "France",
+    "🇩🇪 Germany": "Germany", "🇪🇸 Spain": "Spain", "🇵🇱 Poland": "Poland", "🇨🇦 Canada": "Canada",
+    "🇺🇸 United States": "United States", "🇲🇽 Mexico": "Mexico", "🇰🇷 South Korea": "South Korea",
+    "🇹🇭 Thailand": "Thailand", "🇮🇳 India": "India", "🇦🇺 Australia": "Australia"
+}
 
-# Provide inputs
-col1, col2, col3 = st.columns(3)
+# --- SIDEBAR CONFIGURATION ---
+st.sidebar.title("🌍 Prediction Engine")
+st.sidebar.markdown("Configure the regional ecosystem variables below.")
 
-with col1:
-    st.subheader("Categorical Info")
-    country = st.text_input("Country Name", value="Norway")
-    region = st.selectbox("Region", ["Europe", "North America", "APAC", "Oceania", "South America", "Africa"], index=0)
-    vehicle_segment = st.selectbox("Vehicle Segment", ["mass_market", "premium", "commercial"], index=0)
+country_display = st.sidebar.selectbox("Target Market Selection", list(COUNTRY_MAP.keys()), index=0)
+country = COUNTRY_MAP[country_display]
+region = st.sidebar.selectbox("Continental Region", ["Europe", "North America", "APAC", "Oceania", "South America", "Africa"], index=0)
+vehicle_segment = st.sidebar.selectbox("Vehicle Segment Strategy", ["mass_market", "premium", "commercial"], index=0)
 
-with col2:
-    st.subheader("Policy & Economics")
-    policy_index = st.slider("Policy Index (Subsidies & Regulations)", 0, 8000, 2000)
-    policy_index_lagged_1y = st.slider("Policy Index (Lagged 1 Year)", 0, 8000, 1500)
-    economic_index = st.number_input("Economic Index (GDP * Urban%)", value=5000.0)
-    environmental_stringency_ratio = st.number_input("Environmental Stringency Ratio", value=2.0)
+st.sidebar.markdown("### Economics & Cost Dynamics")
+economic_index = st.sidebar.number_input("Economic Index (GDP * Urban%)", value=5000.0)
+fuel_price = st.sidebar.number_input("Internal Combustion Fuel Price (USD/ltr)", value=1.5)
+electricity_price = st.sidebar.number_input("Electricity Cost (USD/kWh)", value=0.15)
+fuel_to_electric_ratio = st.sidebar.number_input("Fuel-to-Electric Price Ratio", value=10.0)
 
-with col3:
-    st.subheader("Infrastructure & Range")
-    charging_stations = st.number_input("Charging Stations (Units)", value=500)
-    fast_chargers_share = st.slider("Fast Chargers Share (%)", 0.0, 100.0, 10.0)
-    average_ev_range = st.number_input("Average EV Range (km)", value=300)
+st.sidebar.markdown("### Structural Infrastructure & Policy")
+policy_index = st.sidebar.slider("Current Policy Index (Subsidies/Regulations)", 0, 8000, 2000)
+policy_index_lagged_1y = st.sidebar.slider("Lagged 1-Year Policy Index", 0, 8000, 1500)
+environmental_stringency_ratio = st.sidebar.number_input("Environmental Stringency Factor", value=2.0)
+charging_stations = st.sidebar.number_input("Public Charging Stations (Units)", value=500)
+fast_chargers_share = st.sidebar.slider("Fast Charging Capacity Share (%)", 0.0, 100.0, 10.0)
+average_ev_range = st.sidebar.number_input("Average Target EV Range (km)", value=300)
+year_normalized = st.sidebar.number_input("Years Progression since 2010", value=10)
 
-st.markdown("---")
-st.subheader("Cost & General Data")
-col4, col5, col6, col7 = st.columns(4)
-fuel_price = col4.number_input("Fuel Price (USD/ltr)", value=1.5)
-electricity_price = col5.number_input("Electricity Price (USD/kWh)", value=0.15)
-fuel_to_electric_ratio = col6.number_input("Fuel to Electric Ratio", value=10.0)
-year_normalized = col7.number_input("Years since 2010", value=10)
-
-# Non-predictive volume baselines
+# Non-predictive volume baselines locked historically
 petrol_car_sales = 10000 
 diesel_car_sales = 5000
 
+# --- MAIN DASHBOARD VIEW ---
+st.title("Electric Vehicle Market Prediction Engine ⚡🚗")
+st.markdown("This premium dashboard autonomously evaluates macroeconomic shifts, infrastructure expansion, and political subsidies to robustly forecast the resulting adoption integrations of Electric Vehicles.")
+
+# Metrics Cards
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("Assigned Target Market", country_display)
+c2.metric("Economic Baseline", f"{economic_index:,.0f}")
+c3.metric("Policy Velocity", f"{policy_index:,.0f}")
+c4.metric("Infrastructural Range", f"{average_ev_range} km")
+
 st.markdown("---")
 
-# Prediction Button
-if st.button("Predict Market Share 🚀", use_container_width=True):
+# Execution Space
+predict_clicked = st.button("Generate Market Share Prediction 🚀", use_container_width=True)
+
+if predict_clicked:
     model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Models', 'trained_model.pkl'))
     model = load_model(model_path)
     
     if model is None:
-         st.error("Model not found! Please run Notebooks 05 and 06 to train and save `trained_model.pkl` to the `Models/` directory first.")
+         st.error("Algorithm missing! Please ensure `trained_model.pkl` is safely deployed in the `Models/` root directory.")
     else:
-        # Prepare data
+        # Preprocessing translation layer
         input_data = prepare_input_data(
             country, region, year_normalized, vehicle_segment, petrol_car_sales, diesel_car_sales, 
             charging_stations, fast_chargers_share, average_ev_range,
@@ -68,12 +81,38 @@ if st.button("Predict Market Share 🚀", use_container_width=True):
         )
         
         try:
-            # Predict
+            # Extraction
             prediction = model.predict(input_data)[0]
-            # Assure no negative predictions
             prediction = max(0.0, min(100.0, prediction))
             
-            st.success(f"### Predicted EV Market Share: {prediction:.2f}%")
-            st.balloons()
+            st.success(f"### Algorithm Successful: Computed an EV Market Penetration Rate of {prediction:.2f}%")
+            
+            # Premium Visual UI Update
+            fig = go.Figure(go.Indicator(
+                mode = "gauge+number",
+                value = prediction,
+                title = {'text': "Live Estimated Adoption Funnel", 'font': {'size': 24}},
+                number = {'suffix': "%", 'font': {'size': 70, 'color': '#02804c'}},
+                gauge = {
+                    'axis': {'range': [None, 100], 'tickwidth': 2, 'tickcolor': "darkgray"},
+                    'bar': {'color': "#00c968", 'thickness': 0.25},
+                    'bgcolor': "white",
+                    'steps': [
+                        {'range': [0, 15], 'color': '#ff4b4b'},
+                        {'range': [15, 35], 'color': '#ffb020'},
+                        {'range': [35, 65], 'color': '#bcf069'},
+                        {'range': [65, 100], 'color': '#00d500'}],
+                    'threshold': {
+                        'line': {'color': "black", 'width': 4},
+                        'thickness': 0.75,
+                        'value': prediction
+                    }
+                }
+            ))
+            fig.update_layout(height=400, margin=dict(l=10, r=10, t=50, b=10))
+            st.plotly_chart(fig, use_container_width=True)
+            
+            if prediction > 15: st.balloons()
+            
         except Exception as e:
-            st.error(f"Prediction Pipeline Failed: {e}\\n\\nPlease ensure all features perfectly match the exact naming and sequence of the training data.")
+            st.error(f"Computation Pipeline Crash: {e}\\n\\nPlease verify variable parity matches expected XGBoost parameter thresholds.")
